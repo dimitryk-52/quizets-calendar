@@ -519,7 +519,7 @@
 
 <script>
   // Бампай это число при каждом обновлении, чтобы видеть, что страница обновилась.
-  const VERSION = 2;
+  const VERSION = 3;
   document.getElementById('version-tag').textContent = 'v' + VERSION;
 
   // =========================================================
@@ -528,7 +528,8 @@
   const SUPABASE_URL = 'https://rguqfdqmhstojxmktfdc.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_5Nbiyx2_dwWzYT4b-FNgPA_V6vFKnut';
 
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const { createClient } = window.supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const loginScreen = document.getElementById('login-screen');
   const appEl = document.getElementById('app');
@@ -566,7 +567,7 @@
 
   // ---------- Auth ----------
   async function checkSession() {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await sb.auth.getSession();
     if (session) {
       showApp();
     } else {
@@ -587,7 +588,7 @@
 
   loginBtn.addEventListener('click', async () => {
     loginError.textContent = '';
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error } = await sb.auth.signInWithPassword({
       email: emailInput.value.trim(),
       password: passwordInput.value
     });
@@ -603,7 +604,7 @@
   });
 
   signoutBtn.addEventListener('click', async () => {
-    await supabase.auth.signOut();
+    await sb.auth.signOut();
     showLogin();
   });
 
@@ -624,7 +625,7 @@
   async function fetchEntriesForMonth() {
     const start = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
     const end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from('calendar')
       .select('id, date, game')
       .gte('date', fmtDate(start))
@@ -736,7 +737,7 @@
 
   saveBtn.addEventListener('click', async () => {
     saveStatus.textContent = 'Сохраняю…';
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await sb.auth.getUser();
 
     const gamePayload = {
       number: fNumber.value.trim(),
@@ -747,12 +748,12 @@
 
     let error;
     if (activeEntryId) {
-      ({ error } = await supabase
+      ({ error } = await sb
         .from('calendar')
         .update({ game: gamePayload })
         .eq('id', activeEntryId));
     } else {
-      ({ error } = await supabase
+      ({ error } = await sb
         .from('calendar')
         .insert({ date: activeCellDate, game: gamePayload, created_by: user.id }));
     }
@@ -769,7 +770,7 @@
   deleteBtn.addEventListener('click', async () => {
     if (!activeEntryId) return;
     saveStatus.textContent = 'Удаляю…';
-    const { error } = await supabase.from('calendar').delete().eq('id', activeEntryId);
+    const { error } = await sb.from('calendar').delete().eq('id', activeEntryId);
     if (error) {
       saveStatus.textContent = 'Ошибка удаления: ' + error.message;
       return;
