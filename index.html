@@ -413,6 +413,19 @@
   @media (prefers-reduced-motion: reduce) {
     .modal, .day-cell.open { animation: none !important; transition: none !important; }
   }
+
+  #version-tag {
+    position: fixed;
+    bottom: 10px;
+    right: 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    letter-spacing: 0.04em;
+    user-select: none;
+    pointer-events: none;
+    z-index: 5;
+  }
 </style>
 </head>
 <body>
@@ -501,7 +514,14 @@
   </div>
 </div>
 
+<!-- VERSION TAG -->
+<div id="version-tag"></div>
+
 <script>
+  // Бампай это число при каждом обновлении, чтобы видеть, что страница обновилась.
+  const VERSION = 2;
+  document.getElementById('version-tag').textContent = 'v' + VERSION;
+
   // =========================================================
   // НАСТРОЙКА: вставь сюда свои данные из Supabase
   // ==========================================================
