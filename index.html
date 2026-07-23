@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Квиз-календарь</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  /* =========================================================
+     НАСТРОЙКА: вставь сюда свои данные из Supabase
+     Settings -> Data API -> Project URL
+     Settings -> API Keys -> Publishable key
+  ========================================================= */
+  :root {
+    --bg: #f7f4ec;
+    --bg-raised: #ffffff;
+    --bg-cell: #fbf9f3;
+    --ink: #21201b;
+    --ink-dim: #6f6a5c;
+    --ink-faint: #b8b1a0;
+    --amber: #c8791f;
+    --amber-dim: #e7c592;
+    --rose: #c2453a;
+    --line: #e3ddcc;
+    --radius: 10px;
+    --display: 'Space Grotesk', sans-serif;
+    --body: 'Inter', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--body);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* ---------- Login screen ---------- */
+  #login-screen {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .login-card {
+    width: 100%;
+    max-width: 360px;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 32px 28px;
+    box-shadow: 0 8px 24px rgba(33, 32, 27, 0.06);
+  }
+
+  .login-eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin: 0 0 6px;
+  }
+
+  .login-card h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 26px;
+    margin: 0 0 24px;
+  }
+
+  .field {
+    margin-bottom: 14px;
+  }
+
+  .field label {
+    display: block;
+    font-size: 13px;
+    color: var(--ink-dim);
+    margin-bottom: 6px;
+  }
+
+  .field input, .field textarea {
+    width: 100%;
+    background: var(--bg-cell);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--ink);
+    padding: 10px 12px;
+    font-family: var(--body);
+    font-size: 14px;
+  }
+
+  .field input:focus, .field textarea:focus {
+    outline: 2px solid var(--amber);
+    outline-offset: 1px;
+  }
+
+  button {
+    cursor: pointer;
+    font-family: var(--body);
+  }
+
+  .btn-primary {
+    width: 100%;
+    background: var(--amber);
+    color: #201400;
+    border: none;
+    border-radius: 6px;
+    padding: 11px;
+    font-weight: 600;
+    font-size: 14px;
+    margin-top: 6px;
+  }
+  .btn-primary:hover { background: #a9640f; }
+
+  .login-error {
+    color: var(--rose);
+    font-size: 13px;
+    margin-top: 12px;
+    min-height: 16px;
+  }
+
+  /* ---------- App shell ---------- */
+  #app {
+    display: none;
+    width: 100%;
+    max-width: 760px;
+    padding: 32px 20px 60px;
+  }
+
+  header.top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .brand .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin: 0 0 2px;
+  }
+
+  .brand h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 24px;
+    margin: 0;
+  }
+
+  #signout {
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--ink-dim);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+  #signout:hover { color: var(--ink); border-color: var(--ink-faint); }
+
+  /* ---------- Month nav ---------- */
+  .month-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+
+  .month-nav h2 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 20px;
+    margin: 0;
+    text-transform: capitalize;
+  }
+
+  .nav-btn {
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .nav-btn:hover { border-color: var(--amber); color: var(--amber); }
+
+  /* ---------- Calendar grid ---------- */
+  .weekdays, .days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+
+  .weekdays {
+    margin-bottom: 6px;
+  }
+
+  .weekdays span {
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-family: var(--mono);
+    padding-bottom: 4px;
+  }
+  .weekdays span.open-day { color: var(--amber-dim); }
+
+  .day-cell {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: 8px;
+    background: transparent;
+    border: 1px solid transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-faint);
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+
+  .day-cell.empty { visibility: hidden; }
+
+  .day-cell.closed {
+    color: var(--ink-faint);
+  }
+
+  .day-cell.open {
+    background: var(--bg-cell);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    cursor: pointer;
+    transition: transform 0.12s ease, border-color 0.12s ease;
+  }
+
+  .day-cell.open:hover {
+    border-color: var(--amber);
+    transform: translateY(-2px);
+  }
+
+  .day-cell.open:focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 2px;
+  }
+
+  .day-cell.has-game {
+    border-color: var(--amber-dim);
+    background: linear-gradient(160deg, #f4e3bf, var(--bg-cell) 60%);
+  }
+
+  .day-cell.has-game::after {
+    content: '';
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--amber);
+  }
+
+  .day-cell .dnum {
+    font-weight: 500;
+  }
+
+  .day-cell.today .dnum {
+    color: var(--amber);
+    font-weight: 700;
+  }
+
+  .day-cell .game-title {
+    font-family: var(--body);
+    font-size: 9px;
+    color: var(--ink-dim);
+    margin-top: 2px;
+    max-width: 90%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .legend {
+    display: flex;
+    gap: 18px;
+    margin-top: 20px;
+    font-size: 12px;
+    color: var(--ink-dim);
+  }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); }
+
+  /* ---------- Modal ---------- */
+  .modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(33, 32, 27, 0.45);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 10;
+  }
+  .modal-backdrop.show { display: flex; }
+
+  .modal {
+    width: 100%;
+    max-width: 420px;
+    background: var(--bg-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 26px;
+    animation: rise 0.15s ease-out;
+    box-shadow: 0 12px 32px rgba(33, 32, 27, 0.12);
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .modal .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin: 0 0 4px;
+  }
+
+  .modal h3 {
+    font-family: var(--display);
+    font-size: 20px;
+    margin: 0 0 18px;
+    text-transform: capitalize;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .btn-secondary {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink-dim);
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 14px;
+  }
+  .btn-secondary:hover { color: var(--ink); border-color: var(--ink-faint); }
+
+  .btn-danger {
+    background: transparent;
+    border: 1px solid var(--rose);
+    color: var(--rose);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+  .btn-danger:hover { background: var(--rose); color: #fff; }
+
+  .modal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 18px;
+    gap: 10px;
+  }
+
+  .close-x {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    background: none;
+    border: none;
+    color: var(--ink-dim);
+    font-size: 18px;
+  }
+  .modal { position: relative; }
+
+  .save-status {
+    font-size: 12px;
+    color: var(--ink-dim);
+    min-height: 16px;
+    margin-top: 10px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .modal, .day-cell.open { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <p class="login-eyebrow">Доступ по приглашению</p>
+    <h1>Квиз-календарь</h1>
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="password">Пароль</label>
+      <input type="password" id="password" autocomplete="current-password">
+    </div>
+    <button class="btn-primary" id="login-btn">Войти</button>
+    <p class="login-error" id="login-error"></p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header class="top">
+    <div class="brand">
+      <p class="eyebrow">Онлайн-квизы</p>
+      <h1>Квиз-календарь</h1>
+    </div>
+    <button id="signout">Выйти</button>
+  </header>
+
+  <div class="month-nav">
+    <button class="nav-btn" id="prev-month" aria-label="Предыдущий месяц">‹</button>
+    <h2 id="month-label"></h2>
+    <button class="nav-btn" id="next-month" aria-label="Следующий месяц">›</button>
+  </div>
+
+  <div class="weekdays">
+    <span>Пн</span><span>Вт</span><span>Ср</span>
+    <span class="open-day">Чт</span>
+    <span class="open-day">Пт</span>
+    <span>Сб</span><span>Вс</span>
+  </div>
+  <div class="days" id="days-grid"></div>
+
+  <div class="legend">
+    <span><span class="dot"></span> Запланирован квиз</span>
+    <span>Активны только чт и пт</span>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal">
+    <button class="close-x" id="modal-close" aria-label="Закрыть">✕</button>
+    <p class="eyebrow" id="modal-date-label"></p>
+    <h3 id="modal-heading">Новый квиз</h3>
+
+    <div class="field">
+      <label for="f-number">Номер выпуска</label>
+      <input type="text" id="f-number" placeholder="например, 42">
+    </div>
+    <div class="field">
+      <label for="f-title">Название</label>
+      <input type="text" id="f-title" placeholder="например, Квиз 90-х">
+    </div>
+    <div class="field">
+      <label for="f-platform">Платформа</label>
+      <input type="text" id="f-platform" placeholder="например, Zoom, Discord">
+    </div>
+    <div class="field">
+      <label for="f-details">Уточнения</label>
+      <textarea id="f-details" rows="3" placeholder="любые детали"></textarea>
+    </div>
+
+    <p class="save-status" id="save-status"></p>
+
+    <div class="modal-footer">
+      <button class="btn-danger" id="delete-btn" style="display:none;">Удалить</button>
+      <div class="modal-actions" style="flex:1;">
+        <button class="btn-secondary" id="cancel-btn">Отмена</button>
+        <button class="btn-primary" id="save-btn" style="margin-top:0;">Сохранить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // =========================================================
+  // НАСТРОЙКА: вставь сюда свои данные из Supabase
+  // ==========================================================
+  const SUPABASE_URL = 'https://rguqfdqmhstojxmktfdc.supabase.co/rest/v1/';
+  const SUPABASE_ANON_KEY = 'sb_publishable_5Nbiyx2_dwWzYT4b-FNgPA_V6vFKnut';
+
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const loginScreen = document.getElementById('login-screen');
+  const appEl = document.getElementById('app');
+  const loginBtn = document.getElementById('login-btn');
+  const loginError = document.getElementById('login-error');
+  const emailInput = document.getElementById('email');
+  const passwordInput = document.getElementById('password');
+  const signoutBtn = document.getElementById('signout');
+
+  const monthLabel = document.getElementById('month-label');
+  const daysGrid = document.getElementById('days-grid');
+  const prevBtn = document.getElementById('prev-month');
+  const nextBtn = document.getElementById('next-month');
+
+  const modalBackdrop = document.getElementById('modal-backdrop');
+  const modalClose = document.getElementById('modal-close');
+  const modalHeading = document.getElementById('modal-heading');
+  const modalDateLabel = document.getElementById('modal-date-label');
+  const fNumber = document.getElementById('f-number');
+  const fTitle = document.getElementById('f-title');
+  const fPlatform = document.getElementById('f-platform');
+  const fDetails = document.getElementById('f-details');
+  const saveBtn = document.getElementById('save-btn');
+  const cancelBtn = document.getElementById('cancel-btn');
+  const deleteBtn = document.getElementById('delete-btn');
+  const saveStatus = document.getElementById('save-status');
+
+  const monthNamesRu = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+
+  let currentMonth = new Date();
+  currentMonth.setDate(1);
+  let entriesByDate = {};   // 'YYYY-MM-DD' -> {id, game}
+  let activeCellDate = null;
+  let activeEntryId = null;
+
+  // ---------- Auth ----------
+  async function checkSession() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      showApp();
+    } else {
+      showLogin();
+    }
+  }
+
+  function showLogin() {
+    loginScreen.style.display = 'flex';
+    appEl.style.display = 'none';
+  }
+
+  function showApp() {
+    loginScreen.style.display = 'none';
+    appEl.style.display = 'block';
+    renderMonth();
+  }
+
+  loginBtn.addEventListener('click', async () => {
+    loginError.textContent = '';
+    const { error } = await supabase.auth.signInWithPassword({
+      email: emailInput.value.trim(),
+      password: passwordInput.value
+    });
+    if (error) {
+      loginError.textContent = 'Не удалось войти: проверь email и пароль.';
+      return;
+    }
+    showApp();
+  });
+
+  passwordInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') loginBtn.click();
+  });
+
+  signoutBtn.addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    showLogin();
+  });
+
+  // ---------- Calendar rendering ----------
+  function fmtDate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function isSameDay(a, b) {
+    return a.getFullYear() === b.getFullYear() &&
+           a.getMonth() === b.getMonth() &&
+           a.getDate() === b.getDate();
+  }
+
+  async function fetchEntriesForMonth() {
+    const start = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+    const end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+    const { data, error } = await supabase
+      .from('calendar')
+      .select('id, date, game')
+      .gte('date', fmtDate(start))
+      .lte('date', fmtDate(end));
+
+    entriesByDate = {};
+    if (!error && data) {
+      data.forEach(row => { entriesByDate[row.date] = row; });
+    }
+  }
+
+  async function renderMonth() {
+    await fetchEntriesForMonth();
+
+    monthLabel.textContent = `${monthNamesRu[currentMonth.getMonth()]} ${currentMonth.getFullYear()}`;
+    daysGrid.innerHTML = '';
+
+    const firstOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+    // JS: 0=Sun..6=Sat. We want Monday-first grid.
+    let startOffset = firstOfMonth.getDay() - 1;
+    if (startOffset < 0) startOffset = 6;
+
+    const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+    const today = new Date();
+
+    for (let i = 0; i < startOffset; i++) {
+      const empty = document.createElement('div');
+      empty.className = 'day-cell empty';
+      daysGrid.appendChild(empty);
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+      const weekday = d.getDay(); // 4 = Thu, 5 = Fri
+      const isOpenDay = weekday === 4 || weekday === 5;
+      const dateStr = fmtDate(d);
+      const entry = entriesByDate[dateStr];
+
+      const cell = document.createElement('div');
+      cell.classList.add('day-cell');
+      cell.classList.add(isOpenDay ? 'open' : 'closed');
+      if (entry) cell.classList.add('has-game');
+      if (isSameDay(d, today)) cell.classList.add('today');
+
+      const num = document.createElement('div');
+      num.className = 'dnum';
+      num.textContent = day;
+      cell.appendChild(num);
+
+      if (entry && entry.game && entry.game.title) {
+        const t = document.createElement('div');
+        t.className = 'game-title';
+        t.textContent = entry.game.title;
+        cell.appendChild(t);
+      }
+
+      if (isOpenDay) {
+        cell.tabIndex = 0;
+        cell.addEventListener('click', () => openModal(dateStr, d, entry));
+        cell.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') openModal(dateStr, d, entry);
+        });
+      }
+
+      daysGrid.appendChild(cell);
+    }
+  }
+
+  prevBtn.addEventListener('click', () => {
+    currentMonth.setMonth(currentMonth.getMonth() - 1);
+    renderMonth();
+  });
+  nextBtn.addEventListener('click', () => {
+    currentMonth.setMonth(currentMonth.getMonth() + 1);
+    renderMonth();
+  });
+
+  // ---------- Modal ----------
+  function openModal(dateStr, dateObj, entry) {
+    activeCellDate = dateStr;
+    activeEntryId = entry ? entry.id : null;
+
+    const weekdayNames = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
+    modalDateLabel.textContent = `${dateObj.getDate()} ${monthNamesRu[dateObj.getMonth()].toLowerCase()}, ${weekdayNames[dateObj.getDay()]}`;
+    modalHeading.textContent = entry ? 'Квиз запланирован' : 'Новый квиз';
+
+    const game = entry && entry.game ? entry.game : {};
+    fNumber.value = game.number || '';
+    fTitle.value = game.title || '';
+    fPlatform.value = game.platform || '';
+    fDetails.value = game.details || '';
+
+    deleteBtn.style.display = entry ? 'inline-block' : 'none';
+    saveStatus.textContent = '';
+    modalBackdrop.classList.add('show');
+  }
+
+  function closeModal() {
+    modalBackdrop.classList.remove('show');
+    activeCellDate = null;
+    activeEntryId = null;
+  }
+
+  modalClose.addEventListener('click', closeModal);
+  cancelBtn.addEventListener('click', closeModal);
+  modalBackdrop.addEventListener('click', (e) => {
+    if (e.target === modalBackdrop) closeModal();
+  });
+
+  saveBtn.addEventListener('click', async () => {
+    saveStatus.textContent = 'Сохраняю…';
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const gamePayload = {
+      number: fNumber.value.trim(),
+      title: fTitle.value.trim(),
+      platform: fPlatform.value.trim(),
+      details: fDetails.value.trim()
+    };
+
+    let error;
+    if (activeEntryId) {
+      ({ error } = await supabase
+        .from('calendar')
+        .update({ game: gamePayload })
+        .eq('id', activeEntryId));
+    } else {
+      ({ error } = await supabase
+        .from('calendar')
+        .insert({ date: activeCellDate, game: gamePayload, created_by: user.id }));
+    }
+
+    if (error) {
+      saveStatus.textContent = 'Ошибка сохранения: ' + error.message;
+      return;
+    }
+
+    closeModal();
+    renderMonth();
+  });
+
+  deleteBtn.addEventListener('click', async () => {
+    if (!activeEntryId) return;
+    saveStatus.textContent = 'Удаляю…';
+    const { error } = await supabase.from('calendar').delete().eq('id', activeEntryId);
+    if (error) {
+      saveStatus.textContent = 'Ошибка удаления: ' + error.message;
+      return;
+    }
+    closeModal();
+    renderMonth();
+  });
+
+  checkSession();
+</script>
+</body>
+</html>
